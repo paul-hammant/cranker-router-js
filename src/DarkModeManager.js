@@ -18,6 +18,15 @@ class DarkModeManager {
   getAllDarkModeHosts() {
     return Array.from(this.darkModeHosts);
   }
+
+  // Additional methods to mirror Java functionality
+  clearAllDarkModeHosts() {
+    this.darkModeHosts.clear();
+  }
+
+  countDarkModeHosts() {
+    return this.darkModeHosts.size;
+  }
 }
 
 module.exports = DarkModeManager;
