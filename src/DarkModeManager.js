@@ -3,6 +3,10 @@ class DarkModeManager {
     this.darkModeHosts = new Set();
   }
 
+  findHost(address) {
+    return this.getAllDarkModeHosts().find(host => host === address) || null;
+  }
+
   enableDarkModeFor(host) {
     this.darkModeHosts.add(host);
   }
