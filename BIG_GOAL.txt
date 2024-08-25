@@ -1,0 +1,92 @@
+We're making an idiomatically correct NodeJS version of a Java open source library.
+We have a bunch of functionality in the Java one, and need a correct JavaScript version
+of the same.
+
+I have moved the older Java solution to a directory old/
+The Node solution is now in the root directory.
+MuServer is a Java technology like SpringBoot but simpler. The name "Mu" does not need to pre preserved.
+
+The old Java solution in old/ which I will wholly delete when we're complete.
+You can make changes to it if you like - add notes as comments I guess.
+
+Via `cd old/ && find .`
+.
+./src
+./src/main
+./src/main/java
+./src/main/java/com
+./src/main/java/com/hsbc
+./src/main/java/com/hsbc/cranker
+./src/main/java/com/hsbc/cranker/mucranker
+./src/main/java/com/hsbc/cranker/mucranker/ProxyListener.java
+./src/main/java/com/hsbc/cranker/mucranker/HeadersBuilder.java
+./src/main/java/com/hsbc/cranker/mucranker/ConnectorInstance.java
+./src/main/java/com/hsbc/cranker/mucranker/MuCranker.java
+./src/main/java/com/hsbc/cranker/mucranker/ConnectorConnection.java
+./src/main/java/com/hsbc/cranker/mucranker/RouterSocketV3.java
+./src/main/java/com/hsbc/cranker/mucranker/RouteResolver.java
+./src/main/java/com/hsbc/cranker/mucranker/RouterSocket.java
+./src/main/java/com/hsbc/cranker/mucranker/LongestFirstRouteResolver.java
+./src/main/java/com/hsbc/cranker/mucranker/WebSocketFarm.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerMuHandler.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerProtocolResponse.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerRouter.java
+./src/main/java/com/hsbc/cranker/mucranker/IPValidator.java
+./src/main/java/com/hsbc/cranker/mucranker/ConnectorService.java
+./src/main/java/com/hsbc/cranker/mucranker/FavIconHandler.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerProtocolRequestBuilder.java
+./src/main/java/com/hsbc/cranker/mucranker/DarkHost.java
+./src/main/java/com/hsbc/cranker/mucranker/DarkModeManager.java
+./src/main/java/com/hsbc/cranker/mucranker/WebSocketFarmV3Holder.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerProtocol.java
+./src/main/java/com/hsbc/cranker/mucranker/RouterInfo.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerRouterImpl.java
+./src/main/java/com/hsbc/cranker/mucranker/ProxyInfo.java
+./src/main/java/com/hsbc/cranker/mucranker/CrankerRouterBuilder.java
+./src/main/java/com/hsbc/cranker/mucranker/WebSocketFarmV3.java
+./src/test
+./src/test/java
+./src/test/java/RunLocal.java
+./src/test/java/scaffolding
+./src/test/java/scaffolding/InMemCookieJar.java
+./src/test/java/scaffolding/AssertUtils.java
+./src/test/java/scaffolding/StringUtils.java
+./src/test/java/scaffolding/ClientUtils.java
+./src/test/java/scaffolding/RawClient.java
+./src/test/java/scaffolding/Action.java
+./src/test/java/scaffolding/SseTestClient.java
+./src/test/java/com
+./src/test/java/com/hsbc
+./src/test/java/com/hsbc/cranker
+./src/test/java/com/hsbc/cranker/mucranker
+./src/test/java/com/hsbc/cranker/mucranker/MuCrankerTest.java
+./src/test/java/com/hsbc/cranker/mucranker/BaseEndToEndTest.java
+./src/test/java/com/hsbc/cranker/mucranker/CrankerRouterRegistrationTest.java
+./src/test/java/com/hsbc/cranker/mucranker/RouterInfoTest.java
+./src/test/java/com/hsbc/cranker/mucranker/CrankerRouterRetryTest.java
+./src/test/java/com/hsbc/cranker/mucranker/DarkHostImplTest.java
+./src/test/java/com/hsbc/cranker/mucranker/MultiConnectorTest.java
+./src/test/java/com/hsbc/cranker/mucranker/ProxyListenerTest.java
+./src/test/java/com/hsbc/cranker/mucranker/LongestFirstRouteResolverTest.java
+./src/test/java/com/hsbc/cranker/mucranker/CrankerDomainTest.java
+./src/test/java/com/hsbc/cranker/mucranker/FavIconHandlerTest.java
+./src/test/java/com/hsbc/cranker/mucranker/DarkModeTest.java
+./src/test/java/com/hsbc/cranker/mucranker/CrankerRouterHandlerTest.java
+./src/test/java/com/hsbc/cranker/mucranker/ServerSentEventTest.java
+./src/test/java/com/hsbc/cranker/mucranker/CrankerRouterCleanTest.java
+./src/test/java/com/hsbc/cranker/mucranker/IPValidationTest.java
+./src/test/java/com/hsbc/cranker/mucranker/HttpTest.java
+./src/test/java/com/hsbc/cranker/mucranker/HeaderProxyingTest.java
+./src/test/java/com/hsbc/cranker/connector
+./src/test/java/com/hsbc/cranker/connector/TimeoutTest.java
+./src/test/resources
+./src/test/resources/favicon.ico
+./src/test/resources/simplelogger.properties
+./src/test/resources/web
+./src/test/resources/web/static
+./src/test/resources/web/static/large-txt-file.txt
+./src/test/resources/web/static/hello.html
+./src/test/resources/web/static/small-file.html
+./pom.xml
+
+
