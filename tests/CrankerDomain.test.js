@@ -27,7 +27,7 @@ describe('CrankerDomain', () => {
     }).listen(0);
 
     await new Promise(resolve => router.on('listening', resolve));
-  });
+});
 
   afterEach(async () => {
     if (connector1) await connector1.stop();
@@ -40,6 +40,7 @@ describe('CrankerDomain', () => {
 
   test.each([1, 2, 3])('testRegisterWithDomainRouteAs (repetition %i)', async (repetition) => {
   }, 10000);
+
     const protocols = preferredProtocols({ repetition });
 
     targetServer1 = http.createServer((req, res) => {
