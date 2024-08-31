@@ -69,7 +69,12 @@ class CrankerRouter {
 
     try {
       const route = this.builder.routeResolver.resolve(this.routes.keys(), req.url);
-      const socket = await this.getSocket(route);
+      const socket = await this.getSocket(route).catch(() => null);
+      if (!socket) {
+        res.writeHead(503, { 'Content-Type': 'text/plain' });
+        res.end('Service Unavailable');
+        return;
+      }
       await this.proxyRequest(req, res, socket, proxyInfo);
     } catch (error) {
       this.handleProxyError(res, error, proxyInfo);

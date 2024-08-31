@@ -25,6 +25,10 @@ class WebSocketFarm {
         if (index > -1) {
           this.sockets.get(route).splice(index, 1);
           this.idleCount--;
+          if (this.waitingTasks.has(route)) {
+            const task = this.waitingTasks.get(route).shift();
+            if (task) task(socket);
+          }
         }
       }
       resolve();
@@ -38,7 +42,7 @@ class WebSocketFarm {
         this.idleCount--;
       } else {
         // Implement waiting logic here
-        reject(new Error('No socket available'));
+        this.waitingTasks.set(route, (this.waitingTasks.get(route) || []).concat(resolve));
       }
     });
   }
