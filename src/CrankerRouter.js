@@ -9,7 +9,7 @@ const RouterSocketV3 = require('./RouterSocketV3');
 class CrankerRouter {
   constructor(builder) {
     this.builder = builder;
-    this.routes = new Map();
+    this.routes = new Set();
     this.webSocketFarm = new WebSocketFarm(this.builder);
     this.webSocketFarmV3 = new WebSocketFarm(this.builder);
     this.proxyListeners = builder.proxyListeners || [];
@@ -51,6 +51,10 @@ class CrankerRouter {
       }
 
       res.writeHead(200);
+      const route = req.headers['route'];
+      if (route) {
+        this.routes.add(route);
+      }
       res.end('Registration handled');
     };
   }
@@ -64,7 +68,7 @@ class CrankerRouter {
     const proxyInfo = this.createProxyInfo(req, res);
 
     try {
-      const route = this.resolveRoute(req.url);
+      const route = this.builder.routeResolver.resolve(this.routes.keys(), req.url);
       const socket = await this.getSocket(route);
       await this.proxyRequest(req, res, socket, proxyInfo);
     } catch (error) {

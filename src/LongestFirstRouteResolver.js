@@ -19,8 +19,8 @@ class LongestFirstRouteResolver {
       return target;
     }
 
-    // Remove the leading "/"
-    let builder = target.startsWith('/') ? target.slice(1) : target;
+    // Start with the full target path
+    let builder = target;
 
     // Try matching from the longest path one by one
     let lastIndex;
