@@ -29,7 +29,7 @@ describe('CrankerRouter', () => {
       .build();
     const handler = router.createRegistrationHandler();
     // Mock a request and response
-    const req = { method: 'GET', url: '/register', socket: { remoteAddress: '127.0.0.1' } };
+    const req = { method: 'GET', url: '/register', socket: { remoteAddress: '127.0.0.1' }, headers: {} };
     const res = { writeHead: jest.fn(), end: jest.fn() };
     http.createServer.mockImplementation(() => ({
       on: jest.fn(),
