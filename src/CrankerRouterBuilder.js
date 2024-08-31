@@ -1,3 +1,4 @@
+const net = require('net');
 const CrankerRouter = require('./CrankerRouter');
 const IPValidator = require('./utils/IPValidator');
 const LongestFirstRouteResolver = require('./LongestFirstRouteResolver');
