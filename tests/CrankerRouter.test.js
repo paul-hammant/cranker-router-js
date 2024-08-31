@@ -1,6 +1,7 @@
-const {CrankerRouterBuilder} = require('../src/CrankerRouterBuilder');
-const { startRouterAndConnector, startConnectorAndWaitForRegistration } = require('./testUtils');
+const { CrankerRouterBuilder } = require('../src/CrankerRouterBuilder');
 const IPValidator = require('../src/utils/IPValidator');
+const http = require('http');
+jest.mock('http');
 
 describe('CrankerRouter', () => {
   test('should create a router with default settings', () => {
@@ -28,8 +29,13 @@ describe('CrankerRouter', () => {
       .build();
     const handler = router.createRegistrationHandler();
     // Mock a request and response
-    const req = { method: 'GET', url: '/register' };
+    const req = { method: 'GET', url: '/register', socket: { remoteAddress: '127.0.0.1' } };
     const res = { writeHead: jest.fn(), end: jest.fn() };
+    http.createServer.mockImplementation(() => ({
+      on: jest.fn(),
+      listen: jest.fn(),
+      close: jest.fn((callback) => callback()),
+    }));
     await handler(req, res);
     expect(res.writeHead).toHaveBeenCalledWith(200);
   });
