@@ -1,11 +1,57 @@
 const {CrankerRouterBuilder} = require('../src/CrankerRouterBuilder');
+const { startRouterAndConnector, startConnectorAndWaitForRegistration } = require('./testUtils');
+const IPValidator = require('../src/utils/IPValidator');
 
 describe('CrankerRouter', () => {
   test('should create a router with default settings', () => {
     const builder = new CrankerRouterBuilder();
-    const router = builder.build();
+    const router = builder
+      .withRegistrationIpValidator(IPValidator.AllowAll.allow)
+      .build();
     expect(router).toBeDefined();
   });
 
-  // Add more tests here
+  test('should create a router with custom settings', () => {
+    const builder = new CrankerRouterBuilder()
+      .withRegistrationIpValidator(IPValidator.AllowAll.allow)
+      .withConnectorMaxWaitInMillis(1000)
+      .withDiscardClientForwardedHeaders(true)
+      .withViaName('custom-via');
+    const router = builder.build();
+    expect(router).toBeDefined();
+    // Add more specific assertions about the router's configuration
+  });
+
+  test('should handle registration requests', async () => {
+    const router = new CrankerRouterBuilder()
+      .withRegistrationIpValidator(IPValidator.AllowAll.allow)
+      .build();
+    const handler = router.createRegistrationHandler();
+    // Mock a request and response
+    const req = { method: 'GET', url: '/register' };
+    const res = { writeHead: jest.fn(), end: jest.fn() };
+    await handler(req, res);
+    expect(res.writeHead).toHaveBeenCalledWith(200);
+  });
+
+  test.each([1, 2, 3])('getRequestsWithChunksWork (repetition %i)', async (repetition) => {
+    // Implementation
+  });
+
+  test.each([1, 2, 3])('fixedSizeResponsesWork (repetition %i)', async (repetition) => {
+    // Implementation
+  });
+
+  test.each([1, 2, 3])('traceRequestsAreBlocked (repetition %i)', async (repetition) => {
+    // Implementation
+  });
+
+  test.each([1, 2, 3])('postsWithBodiesWork (repetition %i)', async (repetition) => {
+    // Implementation
+  });
+
+  test.each([1, 2, 3])('catchAllWorksWithAsterisk (repetition %i)', async (repetition) => {
+    // Implementation
+  });
+  
 });

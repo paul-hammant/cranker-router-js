@@ -2,3 +2,4 @@
 *.iml
 target/
 .aider*
+node_modules

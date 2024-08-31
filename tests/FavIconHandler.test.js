@@ -36,4 +36,41 @@ describe('FavIconHandlerTest', () => {
     const buffer = await response.arrayBuffer();
     expect(buffer.byteLength).toBe(15406);
   });
+
+  test('returns 404 for non-favicon requests', async () => {
+    const faviconPath = path.join(__dirname, '..', 'test_resources', 'favicon.ico');
+    const favIconHandler = await FavIconHandler.fromClassPath(faviconPath);
+
+    server = http.createServer(async (req, res) => {
+      if (!await favIconHandler.handle(req, res)) {
+        res.writeHead(404);
+        res.end('Not Found');
+      }
+    });
+
+    await new Promise(resolve => server.listen(0, resolve));
+    const port = server.address().port;
+
+    const response = await fetch(`http://localhost:${port}/not-favicon`);
+    expect(response.status).toBe(404);
+  });
+
+  test('returns 404 for non-favicon requests', async () => {
+    const faviconPath = path.join(__dirname, '..', 'test_resources', 'favicon.ico');
+    const favIconHandler = await FavIconHandler.fromClassPath(faviconPath);
+
+    server = http.createServer(async (req, res) => {
+      if (!await favIconHandler.handle(req, res)) {
+        res.writeHead(404);
+        res.end('Not Found');
+      }
+    });
+
+    await new Promise(resolve => server.listen(0, resolve));
+    const port = server.address().port;
+
+    const response = await fetch(`http://localhost:${port}/not-favicon`);
+    expect(response.status).toBe(404);
+  });
+
 });

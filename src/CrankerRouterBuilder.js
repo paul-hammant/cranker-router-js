@@ -1,14 +1,12 @@
 const CrankerRouter = require('./CrankerRouter');
-const dns = require('dns').promises;
-const fs = require('fs').promises;
-const path = require('path');
-const WebSocket = require('ws');
+const IPValidator = require('./utils/IPValidator');
+const LongestFirstRouteResolver = require('./LongestFirstRouteResolver');
 
 class CrankerRouterBuilder {
   constructor() {
-    this.supportedCrankerProtocols = [];
-    this.registrationIpValidator = null;
-    this.connectorMaxWaitInMillis = 5000; // Default value, adjust as needed
+    this.supportedCrankerProtocols = ['1.0', '3.0'];
+    this.ipValidator = IPValidator.AllowAll;
+    this.connectorMaxWaitInMillis = 5000;
     this.discardClientForwardedHeaders = false;
     this.sendLegacyForwardedHeaders = false;
     this.viaName = 'muc';
@@ -16,18 +14,26 @@ class CrankerRouterBuilder {
     this.routesKeepTimeMs = 2 * 60 * 60 * 1000; // 2 hours
     this.pingAfterWriteMs = 10 * 1000; // 10 seconds
     this.proxyHostHeader = true;
-    this.ipValidator = () => true; // Allow all by default
     this.proxyListeners = [];
-    this.wss = new WebSocket.Server({ noServer: true });
+    this.routeResolver = new LongestFirstRouteResolver();
+    this.ipValidator = () => true; // Default to allow all
+  }
+
+  withRegistrationIpValidator(validator) {
+    if (typeof validator !== 'function') {
+      throw new Error('IP validator must be a function');
+    }
+    this.ipValidator = validator;
+    return this;
   }
 
   withSupportedCrankerProtocols(protocols) {
-    this.supportedCrankerProtocols = protocols;
+    this.supportedCrankerProtocols = protocols.map(p => p.replace('cranker_', ''));
     return this;
   }
 
   withRegistrationIpValidator(validator) {
-    this.registrationIpValidator = validator;
+    this.ipValidator = validator;
     return this;
   }
 
@@ -83,74 +89,47 @@ class CrankerRouterBuilder {
     return this;
   }
 
-  withRegistrationIpValidator(validator) {
-    this.ipValidator = validator;
-    return this;
-  }
-
   withProxyListeners(listeners) {
     this.proxyListeners = listeners;
     return this;
   }
 
+  withRouteResolver(resolver) {
+    this.routeResolver = resolver;
+    return this;
+  }
+
+  build() {
+    if (this.supportedCrankerProtocols.length === 0) {
+      throw new Error('No supported Cranker protocols specified');
+    }
+
+    return new CrankerRouter(this);
+  }
+
+  static crankerRouter() {
+    return new CrankerRouterBuilder();
+  }
+
   static MuCranker = {
     artifactVersion: () => {
-      // Implement version retrieval logic here
-      // For example, you could read it from a package.json file
       return require('../package.json').version;
     }
   };
-
-  build() {
-    return {
-      createRegistrationHandler: () => {
-        return (req, res) => {
-          if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
-            if (!this.ipValidator(req.socket.remoteAddress)) {
-              res.writeHead(403);
-              res.end('IP not allowed');
-            } else {
-              this.wss.handleUpgrade(req, req.socket, Buffer.alloc(0), (ws) => {
-                this.wss.emit('connection', ws, req);
-              });
-            }
-          } else {
-            if (!this.ipValidator(req.socket.remoteAddress)) {
-              res.writeHead(403);
-              res.end('IP not allowed');
-            } else {
-              res.writeHead(200);
-              res.end('Registration handled');
-            }
-          }
-        };
-      },
-      createHttpHandler: () => {
-        return (req, res) => {
-          res.writeHead(200);
-          res.end('HTTP request handled');
-        };
-      },
-      stop: async () => {
-        return new Promise((resolve) => {
-          this.wss.close(resolve);
-        });
-      }
-    };
-  }}
+}
 
 class DarkHost {
   constructor(address, dateEnabled, reason) {
-    this.addr = address;
+    this.address = address;
     this.dateEnabled = dateEnabled;
     this.reason = reason;
   }
 
   static async create(address, dateEnabled, reason) {
-    // Resolve the address if it's a hostname
-    if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(address)) {
+    // If address is not an IP, resolve it
+    if (!net.isIP(address)) {
       try {
-        const result = await dns.lookup(address);
+        const result = await dns.promises.lookup(address);
         address = result.address;
       } catch (error) {
         console.error(`Failed to resolve hostname: ${address}`);
@@ -159,31 +138,15 @@ class DarkHost {
     return new DarkHost(address, dateEnabled, reason);
   }
 
-  address() {
-    return this.addr;
-  }
-
-  async sameHost(otherAddress) {
-    // Resolve the other address if it's a hostname
-    if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(otherAddress)) {
-      try {
-        const result = await dns.lookup(otherAddress);
-        otherAddress = result.address;
-      } catch (error) {
-        console.error(`Failed to resolve hostname: ${otherAddress}`);
-        return false;
-      }
-    }
-
-    // Compare IP addresses
-    return this.addr === otherAddress ||
-      (this.addr === '127.0.0.1' && otherAddress === '::1') ||
-      (this.addr === '::1' && otherAddress === '127.0.0.1');
+  sameHost(otherAddress) {
+    return this.address === otherAddress ||
+        (this.address === '127.0.0.1' && otherAddress === '::1') ||
+        (this.address === '::1' && otherAddress === '127.0.0.1');
   }
 
   toMap() {
     return {
-      address: this.addr,
+      address: this.address,
       dateEnabled: this.dateEnabled,
       reason: this.reason
     };
@@ -197,22 +160,29 @@ class FavIconHandler {
 
   static async fromClassPath(iconPath) {
     try {
-      const favicon = await fs.readFile(iconPath);
+      const favicon = await fs.promises.readFile(iconPath);
       return new FavIconHandler(favicon);
     } catch (error) {
       throw new Error(`Failed to read favicon from ${iconPath}: ${error.message}`);
     }
   }
 
-  async handle(req, res) {
-    res.writeHead(200, {
-      'Content-Type': 'image/x-icon',
-      'Content-Length': this.favicon.length,
-      'Cache-Control': 'max-age=360000,public'
-    });
-    res.end(this.favicon);
+  handle(req, res) {
+    if (req.url === '/favicon.ico' && req.method === 'GET') {
+      res.writeHead(200, {
+        'Content-Type': 'image/x-icon',
+        'Content-Length': this.favicon.length,
+        'Cache-Control': 'max-age=360000,public'
+      });
+      res.end(this.favicon);
+      return true;
+    }
+    return false;
   }
 }
 
 module.exports = {
-  FavIconHandler, DarkHost, CrankerRouterBuilder };
+  CrankerRouterBuilder,
+  DarkHost,
+  FavIconHandler
+};

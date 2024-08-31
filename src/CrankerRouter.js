@@ -1,53 +1,126 @@
-const ProxyListener = require('./ProxyListener');
-const DarkModeManager = require('./DarkModeManager');
 const http = require('http');
 const url = require('url');
+const WebSocket = require('ws');
+const WebSocketFarm = require('./WebSocketFarm');
+const DarkModeManager = require('./DarkModeManager');
+const RouterSocket = require('./RouterSocket');
+const RouterSocketV3 = require('./RouterSocketV3');
 
 class CrankerRouter {
   constructor(builder) {
     this.builder = builder;
     this.routes = new Map();
-    this.connectors = new Map();
+    this.webSocketFarm = new WebSocketFarm(this.builder);
+    this.webSocketFarmV3 = new WebSocketFarm(this.builder);
     this.proxyListeners = builder.proxyListeners || [];
     this.darkModeManager = new DarkModeManager();
+    this.httpServer = null;
+    this.wsServer = null;
   }
 
-  proxyRequest(clientReq, clientRes, connectorSocket) {
-    const startTime = Date.now();
-    const proxyInfo = {
-      clientRequest: clientReq,
-      clientResponse: clientRes,
-      targetRequest: null,
-      targetResponse: null,
-      route: clientReq.url.split('/')[1],
-      duration: 0,
-      bytesSent: 0,
-      bytesReceived: 0,
-      error: null
-    };
+  async start() {
+    await this.webSocketFarm.start();
+    await this.webSocketFarmV3.start();
+    this.httpServer = http.createServer(this.handleHttpRequest.bind(this));
+    this.wsServer = new WebSocket.Server({ noServer: true });
+    this.httpServer.on('upgrade', this.handleUpgrade.bind(this));
+  }
 
+  async stop() {
+    if (this.httpServer) {
+      await new Promise(resolve => this.httpServer.close(resolve));
+    }
+    if (this.wsServer) {
+      await new Promise(resolve => this.wsServer.close(resolve));
+    }
+    await this.webSocketFarm.stop();
+    await this.webSocketFarmV3.stop();
+  }
+
+  createRegistrationHandler() {
+    return async (req, res) => {
+      if (!this.builder.ipValidator(req.socket.remoteAddress)) {
+        res.writeHead(403);
+        res.end('IP not allowed');
+        return;
+      }
+
+      if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
+        // WebSocket upgrade will be handled in handleUpgrade method
+        return;
+      }
+
+      res.writeHead(200);
+      res.end('Registration handled');
+    };
+  }
+
+  createHttpHandler() {
+    return this.handleHttpRequest.bind(this);
+  }
+
+  async handleHttpRequest(req, res) {
+    const startTime = Date.now();
+    const proxyInfo = this.createProxyInfo(req, res);
+
+    try {
+      const route = this.resolveRoute(req.url);
+      const socket = await this.getSocket(route);
+      await this.proxyRequest(req, res, socket, proxyInfo);
+    } catch (error) {
+      this.handleProxyError(res, error, proxyInfo);
+    } finally {
+      proxyInfo.duration = Date.now() - startTime;
+      await this.notifyProxyListeners('onComplete', proxyInfo);
+    }
+  }
+
+  async handleUpgrade(request, socket, head) {
+    if (!this.builder.ipValidator(socket.remoteAddress)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    this.wsServer.handleUpgrade(request, socket, head, ws => {
+      this.handleWebSocketConnection(ws, request);
+    });
+  }
+
+  async handleWebSocketConnection(ws, request) {
+    const route = request.headers['route'] || '*';
+    const protocol = this.negotiateProtocol(request);
+
+    if (protocol === 'cranker_3.0') {
+      const routerSocket = new RouterSocketV3(route, request.headers['component-name'], this.webSocketFarmV3, request.socket.remotePort, this.proxyListeners, this.builder.discardClientForwardedHeaders, this.builder.sendLegacyForwardedHeaders, this.builder.viaName, this.builder.doNotProxy);
+      routerSocket.onConnect(ws);
+      await this.webSocketFarmV3.addWebSocket(route, routerSocket);
+    } else {
+      const routerSocket = new RouterSocket(route, request.headers['component-name'], this.webSocketFarm, request.socket.remotePort, this.proxyListeners);
+      routerSocket.onConnect(ws);
+      await this.webSocketFarm.addWebSocket(route, routerSocket);
+    }
+  }
+
+  negotiateProtocol(request) {
+    const protocols = request.headers['sec-websocket-protocol'];
+    if (protocols) {
+      const supportedProtocols = protocols.split(',').map(p => p.trim());
+      if (supportedProtocols.includes('cranker_3.0')) return 'cranker_3.0';
+      if (supportedProtocols.includes('cranker_1.0')) return 'cranker_1.0';
+    }
+    return 'cranker_1.0'; // Default to 1.0 if no supported protocol is found
+  }
+
+  async proxyRequest(clientReq, clientRes, connectorSocket, proxyInfo) {
     const requestHeadersToTarget = this.processRequestHeaders(clientReq.headers);
 
-    // Check if dark mode is enabled for this host
-    const host = requestHeadersToTarget['host'];
-    if (this.darkModeManager.isDarkModeEnabledFor(host)) {
+    if (this.darkModeManager.isDarkModeEnabledFor(requestHeadersToTarget['host'])) {
       this.handleDarkMode(clientRes);
       return;
     }
 
-    // Call onBeforeProxyToTarget listeners
-    for (const listener of this.proxyListeners) {
-      try {
-        listener.onBeforeProxyToTarget(proxyInfo, requestHeadersToTarget);
-      } catch (error) {
-        if (error instanceof WebApplicationException) {
-          this.handleWebApplicationException(error, clientRes);
-          return;
-        }
-        this.handleProxyError(clientRes, error);
-        return;
-      }
-    }
+    await this.notifyProxyListeners('onBeforeProxyToTarget', proxyInfo, requestHeadersToTarget);
 
     const proxyReq = {
       method: clientReq.method,
@@ -55,56 +128,7 @@ class CrankerRouter {
       url: clientReq.url
     };
 
-    connectorSocket.send(JSON.stringify(proxyReq));
-
-    connectorSocket.on('message', (message) => {
-      try {
-        const response = JSON.parse(message);
-        proxyInfo.targetResponse = response;
-
-        // Call onAfterTargetToProxyHeadersReceived listeners
-        for (const listener of this.proxyListeners) {
-          listener.onAfterTargetToProxyHeadersReceived(proxyInfo, response.statusCode, response.headers);
-        }
-
-        this.processResponseHeaders(clientRes, response.headers);
-
-        // Call onBeforeRespondingToClient listeners
-        for (const listener of this.proxyListeners) {
-          listener.onBeforeRespondingToClient(proxyInfo);
-        }
-
-        clientRes.writeHead(response.statusCode, response.headers);
-        clientRes.end(response.body);
-
-        proxyInfo.duration = Date.now() - startTime;
-        proxyInfo.bytesSent = Buffer.byteLength(response.body);
-
-        // Call onAfterResponseSent listeners
-        for (const listener of this.proxyListeners) {
-          listener.onAfterResponseSent(proxyInfo);
-        }
-      } catch (error) {
-        this.handleProxyError(clientRes, error);
-      }
-    });
-
-    clientReq.on('data', (chunk) => {
-      proxyInfo.bytesReceived += chunk.length;
-      connectorSocket.send(JSON.stringify({ type: 'data', data: chunk.toString('base64') }));
-    });
-
-    clientReq.on('end', () => {
-      connectorSocket.send(JSON.stringify({ type: 'end' }));
-    });
-
-    connectorSocket.on('error', (error) => {
-      proxyInfo.error = error;
-      for (const listener of this.proxyListeners) {
-        listener.onProxyError(proxyInfo, error);
-      }
-      this.handleProxyError(clientRes, error);
-    });
+    connectorSocket.sendRequest(proxyReq, clientReq, clientRes, proxyInfo);
   }
 
   processRequestHeaders(headers) {
@@ -121,68 +145,18 @@ class CrankerRouter {
       delete processedHeaders['host'];
     }
 
-    // Add Via header
-    const viaValue = `${http.STATUS_CODES[200]} ${this.builder.viaName}`;
-    if (processedHeaders['via']) {
-      processedHeaders['via'] += `, ${viaValue}`;
-    } else {
-      processedHeaders['via'] = viaValue;
-    }
-
-    // Add Forwarded header
-    const forwardedValue = this.generateForwardedHeader(headers);
-    if (processedHeaders['forwarded']) {
-      processedHeaders['forwarded'] += `, ${forwardedValue}`;
-    } else {
-      processedHeaders['forwarded'] = forwardedValue;
-    }
+    this.addViaHeader(processedHeaders);
+    this.addForwardedHeader(processedHeaders);
 
     if (this.builder.sendLegacyForwardedHeaders) {
-      this.addLegacyForwardedHeaders(processedHeaders, headers);
+      this.addLegacyForwardedHeaders(processedHeaders);
     }
 
     return processedHeaders;
   }
 
-  generateForwardedHeader(headers) {
-    const parts = [];
-    if (headers['x-forwarded-for']) {
-      parts.push(`for=${headers['x-forwarded-for']}`);
-    }
-    if (headers['x-forwarded-proto']) {
-      parts.push(`proto=${headers['x-forwarded-proto']}`);
-    }
-    if (headers['host']) {
-      parts.push(`host=${headers['host']}`);
-    }
-    return parts.join(';');
-  }
-
-  addLegacyForwardedHeaders(processedHeaders, originalHeaders) {
-    if (originalHeaders['x-forwarded-for']) {
-      processedHeaders['x-forwarded-for'] = originalHeaders['x-forwarded-for'];
-    }
-    if (originalHeaders['x-forwarded-proto']) {
-      processedHeaders['x-forwarded-proto'] = originalHeaders['x-forwarded-proto'];
-    }
-    if (originalHeaders['x-forwarded-host']) {
-      processedHeaders['x-forwarded-host'] = originalHeaders['x-forwarded-host'];
-    }
-  }
-
-  processResponseHeaders(clientRes, headers) {
-    // Remove hop-by-hop headers
-    const hopByHopHeaders = [
-      'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
-      'te', 'trailers', 'transfer-encoding', 'upgrade'
-    ];
-
-    hopByHopHeaders.forEach(header => {
-      delete headers[header];
-    });
-
-    // Add Via header to response
-    const viaValue = `${clientRes.httpVersion} ${this.builder.viaName}`;
+  addViaHeader(headers) {
+    const viaValue = `${http.STATUS_CODES[200]} ${this.builder.viaName}`;
     if (headers['via']) {
       headers['via'] += `, ${viaValue}`;
     } else {
@@ -190,39 +164,101 @@ class CrankerRouter {
     }
   }
 
-
-  handleWebApplicationException(error, response) {
-    response.writeHead(error.statusCode, { 'Content-Type': 'text/plain' });
-    response.end(error.message);
+  addForwardedHeader(headers) {
+    const forwardedValue = this.generateForwardedHeader(headers);
+    if (headers['forwarded']) {
+      headers['forwarded'] += `, ${forwardedValue}`;
+    } else {
+      headers['forwarded'] = forwardedValue;
+    }
   }
 
-  handleProxyError(response, error) {
+  generateForwardedHeader(headers) {
+    const parts = [];
+    if (headers['x-forwarded-for']) parts.push(`for=${headers['x-forwarded-for']}`);
+    if (headers['x-forwarded-proto']) parts.push(`proto=${headers['x-forwarded-proto']}`);
+    if (headers['host']) parts.push(`host=${headers['host']}`);
+    return parts.join(';');
+  }
+
+  addLegacyForwardedHeaders(headers) {
+    if (headers['x-forwarded-for']) headers['x-forwarded-for'] = headers['x-forwarded-for'];
+    if (headers['x-forwarded-proto']) headers['x-forwarded-proto'] = headers['x-forwarded-proto'];
+    if (headers['x-forwarded-host']) headers['x-forwarded-host'] = headers['x-forwarded-host'];
+  }
+
+  handleDarkMode(response) {
+    response.writeHead(503, { 'Content-Type': 'text/plain' });
+    response.end('Service temporarily unavailable due to dark mode');
+  }
+
+  handleProxyError(response, error, proxyInfo) {
     console.error('Proxy error:', error);
     response.writeHead(502, { 'Content-Type': 'text/plain' });
     response.end('Proxy Error: ' + error.message);
+    proxyInfo.error = error;
   }
-  
+
+  createProxyInfo(req, res) {
+    return {
+      clientRequest: req,
+      clientResponse: res,
+      route: this.resolveRoute(req.url),
+      duration: 0,
+      bytesSent: 0,
+      bytesReceived: 0,
+      error: null
+    };
+  }
+
+  resolveRoute(requestUrl) {
+    const parsedUrl = url.parse(requestUrl);
+    const pathParts = parsedUrl.pathname.split('/');
+    return pathParts[1] || '*';
+  }
+
+  async getSocket(route) {
+    const socket = await this.webSocketFarm.getSocket(route) || await this.webSocketFarmV3.getSocket(route);
+    if (!socket) {
+      throw new Error(`No available socket for route: ${route}`);
+    }
+    return socket;
+  }
+
+  async notifyProxyListeners(event, ...args) {
+    for (const listener of this.proxyListeners) {
+      if (typeof listener[event] === 'function') {
+        await listener[event](...args);
+      }
+    }
+  }
+
+  idleConnectionCount() {
+    return this.webSocketFarm.idleCount() + this.webSocketFarmV3.idleCount();
+  }
+
+  collectInfo() {
+    return {
+      services: this.getServices(),
+      darkHosts: this.darkModeManager.getAllDarkModeHosts(),
+      waitingTasks: this.getWaitingTasks()
+    };
+  }
+
+  getServices() {
+    // Implement this method to return service information
+  }
+
+  getWaitingTasks() {
+    // Implement this method to return waiting tasks information
+  }
+
   darkModeManager() {
     return this.darkModeManager;
   }
 
-  stop() {
-    for (const socket of this.connectors.values()) {
-      socket.close();
-    }
-    this.connectors.clear();
-    this.routes.clear();
-  }
-
   static muCrankerVersion() {
     return require('../package.json').version;
-  }
-}
-
-class WebApplicationException extends Error {
-  constructor(statusCode, message) {
-    super(message);
-    this.statusCode = statusCode;
   }
 }
 
