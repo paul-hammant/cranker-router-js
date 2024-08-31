@@ -1,6 +1,6 @@
 We're attempting to make an idiomatically correct NodeJS version of a Java open source library.
 We have a bunch of functionality in an old Java one, and porting is what we're trying to finish.
 
-MuCranker is a the old Java technology. The name "Mu" does not need to pre preserved.
+MuCranker is the old Java technology. The name "Mu" does not need to preserved.
 
 Our goal now is to get the Jest tests passing.
