@@ -40,7 +40,6 @@ describe('CrankerDomain', () => {
 
   test.each([1, 2, 3])('testRegisterWithDomainRouteAs (repetition %i)', async (repetition) => {
     const protocols = preferredProtocols({ repetition });
-  }, 10000);
 
     targetServer1 = http.createServer((req, res) => {
       res.writeHead(200);
