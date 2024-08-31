@@ -1,6 +1,6 @@
 // test/CrankerDomain.test.js
 const { CrankerRouterBuilder } = require('../src/CrankerRouterBuilder');
-const { startConnectorAndWaitForRegistration } = require('./testUtils');
+const { startConnectorAndWaitForRegistration, preferredProtocols } = require('./testUtils');
 const http = require('http');
 const https = require('https');
 const axios = require('axios');
