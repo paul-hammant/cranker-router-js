@@ -51,13 +51,14 @@ describe('CrankerDomain', () => {
       res.end('127.0.0.1');
     }).listen(0);
 
+    await new Promise(resolve => router.on('listening', resolve));
     await Promise.all([
       new Promise(resolve => targetServer1.on('listening', resolve)),
       new Promise(resolve => targetServer2.on('listening', resolve))
     ]);
 
-    connector1 = await startConnectorAndWaitForRegistration('localhost', targetServer1, protocols, '*', router.address().port);
-    connector2 = await startConnectorAndWaitForRegistration('127.0.0.1', targetServer2, protocols, '*', router.address().port);
+    connector1 = await startConnectorAndWaitForRegistration('localhost', targetServer1, protocols, '*', router);
+    connector2 = await startConnectorAndWaitForRegistration('127.0.0.1', targetServer2, protocols, '*', router);
 
     const client = axios.create({
       httpsAgent: new https.Agent({ rejectUnauthorized: false })
