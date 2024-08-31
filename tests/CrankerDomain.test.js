@@ -1,6 +1,6 @@
 // test/CrankerDomain.test.js
 const { CrankerRouterBuilder } = require('../src/CrankerRouterBuilder');
-const { startConnectorAndWaitForRegistration, preferredProtocols } = require('./testUtils');
+const { startConnectorAndWaitForRegistration } = require('./testUtils');
 const http = require('http');
 const https = require('https');
 const axios = require('axios');
@@ -56,8 +56,8 @@ describe('CrankerDomain', () => {
       new Promise(resolve => targetServer2.on('listening', resolve))
     ]);
 
-    connector1 = await startConnectorAndWaitForRegistration(crankerRouter, 'localhost', targetServer1, protocols, '*', router);
-    connector2 = await startConnectorAndWaitForRegistration(crankerRouter, '127.0.0.1', targetServer2, protocols, '*', router);
+    connector1 = await startConnectorAndWaitForRegistration('localhost', targetServer1, protocols, '*', router.address().port);
+    connector2 = await startConnectorAndWaitForRegistration('127.0.0.1', targetServer2, protocols, '*', router.address().port);
 
     const client = axios.create({
       httpsAgent: new https.Agent({ rejectUnauthorized: false })
