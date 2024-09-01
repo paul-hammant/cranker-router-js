@@ -10,7 +10,7 @@ const DarkModeManager = require('../src/DarkModeManager');
 
 describe('DarkMode', () => {
   let targetServer, cranker, crankerServer, connector;
-  const darkModeManager = new DarkModeManager();
+  let darkModeManager = new DarkModeManager();
 
   beforeEach(async () => {
     targetServer = http.createServer((req, res) => {
