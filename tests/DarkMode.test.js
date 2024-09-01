@@ -6,9 +6,11 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const IPValidator = require("../src/utils/IPValidator");
+const DarkModeManager = require('../src/DarkModeManager');
 
 describe('DarkMode', () => {
-  let targetServer, cranker, darkModeManager, crankerServer, connector;
+  let targetServer, cranker, crankerServer, connector;
+  const darkModeManager = new DarkModeManager();
 
   beforeEach(async () => {
     targetServer = http.createServer((req, res) => {
