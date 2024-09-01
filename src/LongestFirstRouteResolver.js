@@ -31,11 +31,6 @@ class LongestFirstRouteResolver {
         return builder;
       }
     }
-      builder = builder.substring(0, lastIndex);
-      if (routes.has(builder)) {
-        return builder;
-      }
-    }
 
     return '*';
   }
