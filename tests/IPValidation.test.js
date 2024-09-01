@@ -31,7 +31,6 @@ describe('IPValidationTest', () => {
     await new Promise(resolve => targetServer.listen(0, resolve));
 
     crankerRouter = new CrankerRouterBuilder()
-      .withRegistrationIpValidator(IPValidator.AllowAll.allow)
       .withSupportedCrankerProtocols(['cranker_1.0', 'cranker_3.0'])
       .withRegistrationIpValidator(ipValidator)
       .withConnectorMaxWaitInMillis(400)
