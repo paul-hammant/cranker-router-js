@@ -68,7 +68,7 @@ class CrankerRouter {
     const proxyInfo = this.createProxyInfo(req, res);
 
     try {
-      const route = this.builder.routeResolver.resolve(this.routes.keys(), req.url);
+      const route = this.builder.routeResolver.resolve(Array.from(this.routes), req.url);
       const socket = await this.getSocket(route).catch(() => null);
       if (!socket) {
         res.writeHead(503, { 'Content-Type': 'text/plain' });
