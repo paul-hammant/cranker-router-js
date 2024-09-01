@@ -255,7 +255,7 @@ class CrankerRouter {
   }
 
   getServices() {
-    // Implement this method to return service information
+    return [];
   }
 
   getWaitingTasks() {
