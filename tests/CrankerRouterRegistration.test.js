@@ -1,6 +1,6 @@
 const { CrankerRouterBuilder } = require('../src/CrankerRouterBuilder');
 const { startConnectorAndWaitForRegistration, preferredProtocols } = require('./testUtils');
-const LongestFirstRouteResolver = require('../src/LongestFirstRouteResolver');
+const { LongestFirstRouteResolver } = require('../src/LongestFirstRouteResolver');
 const http = require('http');
 const https = require('https');
 const axios = require('axios');
