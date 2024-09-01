@@ -113,11 +113,13 @@ class CrankerRouterBuilder {
     return new CrankerRouterBuilder();
   }
 
-  static MuCranker = {
-    artifactVersion: () => {
-      return require('../package.json').version;
-    }
-  };
+  static get MuCranker() {
+    return {
+      artifactVersion: () => {
+        return require('../package.json').version;
+      }
+    };
+  }
 }
 
 class DarkHost {
