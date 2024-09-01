@@ -259,7 +259,7 @@ class CrankerRouter {
   }
 
   getWaitingTasks() {
-    // Implement this method to return waiting tasks information
+    return [];
   }
 
 
