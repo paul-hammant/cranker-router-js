@@ -35,7 +35,7 @@ describe('DarkHostImpl', () => {
     const now = new Date();
     const ipv6 = await DarkHost.create('::1', now, null);
     const ipv4 = await DarkHost.create('127.0.0.1', now, null);
-    expect(await ipv6.sameHost(ipv4.address())).toBe(true);
+    expect(await ipv6.sameHost(ipv4.address)).toBe(true);
   });
 
   test('darkHostsCanBeConvertedToMaps', async () => {
