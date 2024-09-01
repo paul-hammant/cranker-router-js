@@ -36,4 +36,4 @@ class LongestFirstRouteResolver {
   }
 }
 
-module.exports = LongestFirstRouteResolver;
+module.exports = { LongestFirstRouteResolver };
