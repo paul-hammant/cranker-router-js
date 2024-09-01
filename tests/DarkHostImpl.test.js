@@ -9,7 +9,7 @@ describe('DarkHostImpl', () => {
     const domain = await DarkHost.create('localhost', now, null);
     const ip = await DarkHost.create('127.0.0.1', now, null);
 
-    expect(await domain.sameHost(ip.address())).toBe(true);
+    expect(await domain.sameHost(ip.address)).toBe(true);
   });
 
   test('darkHostsCanBeConvertedToMaps', async () => {
