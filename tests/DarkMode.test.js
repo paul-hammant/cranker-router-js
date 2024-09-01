@@ -27,7 +27,7 @@ describe('DarkMode', () => {
       .withSupportedCrankerProtocols(['cranker_1.0', 'cranker_3.0'])
       .build();
 
-    darkModeManager = cranker.darkModeManager();
+    darkModeManager = new DarkModeManager();
 
     crankerServer = https.createServer({
       key: fs.readFileSync(path.join(__dirname, '..', 'test_resources', 'key.pem')),
