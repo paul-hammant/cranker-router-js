@@ -115,7 +115,7 @@ describe('IPValidationTest', () => {
 
   test('IP validation with specific IP address', async () => {
     const allowedIp = '127.0.0.1';
-    await setupServers((ip) => ip === allowedIp);
+    await setupServers(IPValidator.create([allowedIp]).allow);
 
     // Connection from allowed IP should succeed
     connector = await startConnector('*', '*', ['cranker_1.0'], targetServer, router);

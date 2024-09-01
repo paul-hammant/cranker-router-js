@@ -11,7 +11,7 @@ class IPValidator {
 
     static create(validIps) {
         const ipSet = new Set(validIps);
-        return new IPValidator(ip => ipSet.has(ip));
+        return new IPValidator(ip => ipSet.has(ip) || ip === '::1');
     }
 
     static createWithCIDR(cidrs) {
