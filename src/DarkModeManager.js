@@ -7,6 +7,10 @@ class DarkModeManager {
     this.darkModeHosts = new Set();
   }
 
+  darkHosts() {
+    return this.getAllDarkModeHosts();
+  }
+
   async findHost(address) {
     for (const host of this.darkModeHosts) {
       if (await this.sameHost(host, address)) {
