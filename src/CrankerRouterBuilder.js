@@ -35,11 +35,6 @@ class CrankerRouterBuilder {
     return this;
   }
 
-  withRegistrationIpValidator(validator) {
-    this.ipValidator = validator;
-    return this;
-  }
-
   withConnectorMaxWaitInMillis(millis) {
     this.connectorMaxWaitInMillis = millis;
     return this;
