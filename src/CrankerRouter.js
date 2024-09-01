@@ -262,9 +262,6 @@ class CrankerRouter {
     // Implement this method to return waiting tasks information
   }
 
-  darkModeManager() {
-    return this.darkModeManager;
-  }
 
   static muCrankerVersion() {
     return require('../package.json').version;
