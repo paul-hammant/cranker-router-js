@@ -3,7 +3,7 @@ const dns = require('dns');
 const fs = require('fs');
 const CrankerRouter = require('./CrankerRouter');
 const IPValidator = require('./utils/IPValidator');
-const LongestFirstRouteResolver = require('./LongestFirstRouteResolver');
+const { LongestFirstRouteResolver } = require('./LongestFirstRouteResolver');
 
 class CrankerRouterBuilder {
   constructor() {
