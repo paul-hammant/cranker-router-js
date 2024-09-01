@@ -15,7 +15,8 @@ class LongestFirstRouteResolver {
      * @return {string} - The resolved route.
      */
   resolve(routes, target) {
-    if (routes.has(target)) {
+    const routeSet = new Set(routes);
+    if (routeSet.has(target)) {
       return target;
     }
 
@@ -25,6 +26,11 @@ class LongestFirstRouteResolver {
     // Try matching from the longest path one by one
     let lastIndex;
     while ((lastIndex = builder.lastIndexOf('/')) >= 0) {
+      builder = builder.substring(0, lastIndex);
+      if (routeSet.has(builder)) {
+        return builder;
+      }
+    }
       builder = builder.substring(0, lastIndex);
       if (routes.has(builder)) {
         return builder;
